@@ -63,9 +63,3 @@ To test this repository's functionality:
 ## Contributions
 
 Contributions to this project are welcome. Please submit pull requests or issues through GitHub to propose enhancements or report bugs.
-
-## License
-
-[MIT License](LICENSE)
-
-This project is open source and welcomes contributions from the community. Please adhere to this project's code of conduct for collaboration.
