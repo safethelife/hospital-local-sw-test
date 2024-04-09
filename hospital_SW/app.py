@@ -8,11 +8,8 @@ from watchdog.events import FileSystemEventHandler
 import threading
 from queue import Queue, Empty
 import pydicom
-import boto3
-from botocore.exceptions import NoCredentialsError
+import requests
 import os
-from env import settings
-
 
 
 def extract_patient_info(dicom_file_path):
@@ -23,28 +20,18 @@ def extract_patient_info(dicom_file_path):
     patient_sex = str(ds.PatientSex) if 'PatientSex' in ds else 'Unknown'
     return patient_name, patient_id, patient_birth_date, patient_sex
 
-
-def upload_to_s3(file_name, bucket, object_name=None, metadata=None):
-    if object_name is None:
-        object_name = file_name
-    if metadata is None:
-        metadata = {}
-
-    # S3 클라이언트 생성
-    s3_client = boto3.client('s3',
-                             aws_access_key_id=settings.AWS['access_key_id'],
-                             aws_secret_access_key=settings.AWS['secret_access_key'])
-
-    try:
-        # 파일 내용 읽기
-        with open(file_name, 'rb') as file_data:
-            s3_client.put_object(Bucket=bucket, Key=object_name, Body=file_data, Metadata=metadata)
-        print(f"File {object_name} uploaded successfully with metadata.")
-    except NoCredentialsError:
-        print("Credentials not available")
-        return False
-    return True
-
+def upload_file_to_flask(file_path):
+    url = 'http://127.0.0.1:5000/upload'
+    files = {'file': (os.path.basename(file_path), open(file_path, 'rb'))}
+    patient_info = extract_patient_info(file_path)  # DICOM 파일로부터 환자 정보 추출
+    data = {
+        'patient_name': patient_info[0],
+        'patient_id': patient_info[1],
+        'patient_birth_date': patient_info[2],
+        'patient_sex': patient_info[3]
+    }
+    response = requests.post(url, files=files, data=data)  # 환자 정보를 data 인자로 전송
+    print(f"File {os.path.basename(file_path)} uploaded with response: {response.text}")
 
 
 class FileEventHandler(FileSystemEventHandler):
@@ -52,10 +39,8 @@ class FileEventHandler(FileSystemEventHandler):
         super().__init__()
         self.signal = signal
         self.buffer = Queue()
-        self.buffer_timeout = 2  # 버퍼 타임아웃을 2초로 설정
+        self.buffer_timeout = 2
         self.last_event_time = time.time()
-
-        # 버퍼 처리 스레드 시작
         threading.Thread(target=self.process_buffer, daemon=True).start()
 
     def on_created(self, event):
@@ -66,26 +51,16 @@ class FileEventHandler(FileSystemEventHandler):
     def process_buffer(self):
         while True:
             try:
-                # 버퍼 타임아웃 동안 대기
                 time.sleep(self.buffer_timeout)
                 current_time = time.time()
-                if current_time - self.last_event_time >= self.buffer_timeout:
-                    # 타임아웃이 지나면 로그 출력 및 파일 업로드
-                    try:
-                        while True:
-                            # 큐에서 파일 경로를 가져와 환자 정보를 추출
-                            file_path = self.buffer.get_nowait()
-                            patient_info = extract_patient_info(file_path)
-                            message = f"New DICOM file: {os.path.basename(file_path)}, Patient Name: {patient_info[0]}, Patient ID: {patient_info[1]}, Birth Date: {patient_info[2]}, Sex: {patient_info[3]}"
-
-                            # 파일을 S3에 업로드하면서 환자 이름과 ID를 메타데이터로 추가
-                            metadata = {
-                                'patient_name': patient_info[0],
-                                'patient_id': patient_info[1]
-                            }
-                            upload_to_s3(file_path, settings.AWS['bucket'], os.path.basename(file_path), metadata)
-                    except Empty:
-                        pass
+                if current_time - self.last_event_time >= self.buffer_timeout and not self.buffer.empty():
+                    while not self.buffer.empty():
+                        file_path = self.buffer.get()
+                        patient_info = extract_patient_info(file_path)
+                        message = f"New DICOM file: {os.path.basename(file_path)}, Patient Name: {patient_info[0]}, Patient ID: {patient_info[1]}, Birth Date: {patient_info[2]}, Sex: {patient_info[3]}"
+                        self.signal.emit(message)
+                        upload_file_to_flask(file_path)  # 파일 업로드 함수 호출
+                    self.last_event_time = time.time()
             except Exception as e:
                 print(f"Error in process_buffer: {e}")
 
@@ -109,7 +84,6 @@ class DirectoryMonitorThread(QThread):
         finally:
             observer.stop()
             observer.join()
-
 
 
 class MainWindow(QWidget):
@@ -138,7 +112,7 @@ class MainWindow(QWidget):
 
         # 시스템 트레이 아이콘 설정
         self.trayIcon = QSystemTrayIcon(self)
-        self.trayIcon.setIcon(QIcon('C:/Users/dhwan/PycharmProjects/hospital/icon.png'))
+        self.trayIcon.setIcon(QIcon('icon.png'))
         self.trayIcon.setVisible(True)
 
         # 트레이 메뉴 설정
