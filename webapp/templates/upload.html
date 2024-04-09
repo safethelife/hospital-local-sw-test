@@ -1,4 +1,5 @@
-<!doctype html>
+<!-- upload.html 수정 -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,8 +8,8 @@
 <body>
     <h1>Uploaded Files</h1>
     <ul>
-        {% for file in files %}
-        <li>{{ file }} <a href="{{ url_for('download_file', filename=file) }}">Download</a></li>
+        {% for filename, info in files.items() %}
+        <li>Patient Name: {{ info.name }}, Patient ID: {{ info.id }} - <a href="{{ url_for('download_file', filename=filename) }}">Download</a></li>
         {% endfor %}
     </ul>
 </body>
