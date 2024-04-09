@@ -1,61 +1,63 @@
-# DICOM Files Management and QR Code Generator
+# DICOM Files Management and QR Code Generator (Local WAS)
 
-This project provides a solution for managing DICOM medical imaging files generated from CR scanners in healthcare facilities. It automates the process of uploading these files to a web server (local WAS), generating downloadable links, converting these links into QR codes, and enabling patients to download their medical data by scanning the QR code. This README outlines the setup, workflow, and testing of this system.
+This project provides a comprehensive solution for managing DICOM medical imaging files, enabling secure local storage on a Web Application Server (WAS) and facilitating patient access through QR code scanning. This README outlines the setup, workflow, and guidelines for a local implementation, bypassing the need for cloud storage solutions like AWS S3 due to personal information security concerns.
 
 ![architecture](https://github.com/safethelife/hospital-local-sw-test/assets/62466374/f97952a2-a2c0-4756-b1aa-80df08a57248)
 
 ## Workflow Overview
 
-1. **CR Scanner Imaging**: A patient undergoes medical imaging with a CR scanner.
-2. **Local PC Processing**: The CR scanner is connected to a local PC that generates the imaging results as DICOM files.
-3. **Web Server Storage**: The generated DICOM files are automatically uploaded to a web server (local WAS), where a downloadable link for each file is created.
-4. **QR Code Generation**: Each download link is converted into a QR code.
-5. **QR Code Distribution**: The QR codes are printed at the reception desk's local PC and handed to patients.
-6. **Patient Downloads Data**: Patients can scan the QR code to download their medical data.
+1. **CR Scanner Imaging**: Patients undergo medical imaging using a CR scanner.
+2. **Local PC Processing**: The CR scanner, connected to a local PC, generates imaging results as DICOM files.
+3. **Local WAS Storage**: Generated DICOM files are automatically uploaded to a local Web Application Server, where downloadable links for each file are created.
+4. **QR Code Generation**: Each download link is converted into a QR code for easy access.
+5. **QR Code Distribution**: At the reception, a local PC prints the QR codes for patients to take with them.
+6. **Patient Downloads Data**: Patients can scan the QR code with their mobile devices to download their medical data.
 
 ## System Requirements
 
-- CR Scanner connected to a Local PC.
-- Local PC with internet access for uploading DICOM files.
-- WAS setting for storing DICOM files.
-- Web server capable of generating downloadable links and converting them into QR codes.
-- Printer for QR codes at the reception desk.
-- QR code scanning capability on the patient's device (e.g., smartphone).
+- CR Scanner connected to a Local PC for DICOM file generation.
+- Local Web Application Server (WAS) for secure storage of DICOM files.
+- Software to generate QR codes from download links.
+- Printer connected to the local PC at the reception for printing QR codes.
+- Internet-enabled device for patients to scan QR codes and access their medical data.
 
 ## Setup and Configuration
 
 ### CR Scanner and Local PC
 
-- Ensure the CR scanner is properly connected and configured to save DICOM files to a specific directory on the local PC.
+Ensure the CR scanner is properly connected to a local PC designed to generate DICOM files in a specified directory.
 
+### Local WAS Configuration
 
-### Web Server Setup
+Set up a local Web Application Server to receive and store DICOM files. Ensure it's secured and accessible only within the local network or VPN to protect patient information.
 
-- Deploy a web server capable of handling file uploads to local WAS and generating downloadable links.
-- Implement a QR code generation feature to convert download links into QR codes.
+### QR Code Generation and Distribution
 
-### Front Desk PC Configuration
-
-- Setup a web page or application to display uploaded DICOM files and their corresponding QR codes.
-- Ensure a printer is connected for printing QR codes.
+Implement functionality on the local WAS or use third-party software to generate QR codes from the downloadable links of the DICOM files stored on the server. Ensure the reception's local PC has access to this system for printing QR codes for patients.
 
 ## Usage
 
-1. **DICOM File Generation**: Conduct medical imaging with the CR scanner. The local PC will automatically generate and save DICOM files.
-2. **File Monitoring and Upload**: The system monitors the designated directory for new DICOM files and uploads them to the local WAS.
-3. **Downloadable Link and QR Code Generation**: For each uploaded file, the web server generates a downloadable link, converts it into a QR code, and displays it on the front desk PC.
-4. **QR Code Printing**: Print the QR code for the patient at the reception desk.
-5. **Patient Downloads Data**: The patient scans the QR code with their device to download their medical data.
+1. **DICOM File Generation**: Conduct medical imaging with the CR scanner. The local PC automatically generates DICOM files.
+2. **File Monitoring and Upload**: A system monitors the specified directory for new DICOM files and uploads them to the local WAS.
+3. **Downloadable Link and QR Code Generation**: The local WAS generates a downloadable link for each uploaded file, converts it into a QR code, and makes it available for printing.
+4. **QR Code Printing and Distribution**: Print the QR code for patients at the reception desk.
+5. **Patient Downloads Data**: Patients scan the QR code with their device to securely download their medical data.
+
+## Security Considerations
+
+- **Data Encryption**: Ensure all data transmissions within the local network are encrypted to protect patient information.
+- **Access Control**: Implement strict access control measures on the local WAS to prevent unauthorized access to DICOM files.
+- **Audit Trails**: Maintain logs of all accesses to the DICOM files for auditing and compliance purposes.
 
 ## Testing
 
-To test this repository's functionality:
+To test the functionality of this repository:
 
-1. Simulate DICOM file generation by adding files to the monitored directory.
-2. Verify that the files are uploaded to loacl WAS and that downloadable links are generated.
-3. Check the web page or application at the front desk PC for the new files and their QR codes.
-4. Test the QR code with a mobile device to ensure it correctly downloads the DICOM file.
+1. Simulate the generation of DICOM files by adding files to the monitored directory.
+2. Verify that the files are uploaded to the local WAS and that downloadable links are generated.
+3. Check for the new files and their QR codes available for printing at the reception's local PC.
+4. Test the QR code with a mobile device to ensure the correct download of the DICOM file.
 
 ## Contributions
 
-Contributions to this project are welcome. Please submit pull requests or issues through GitHub to propose enhancements or report bugs.
+Contributions to improve the project are welcome. Please submit pull requests or issues through GitHub to propose enhancements or report bugs.
