@@ -1,18 +1,19 @@
-from flask import Flask, request, redirect, url_for, render_template, send_from_directory
+from flask import Flask, request, redirect, url_for, render_template, send_file
+from pymongo import MongoClient
+import gridfs
+from pydicom import dcmread, dcmwrite
 import os
+import io
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# 현재 스크립트의 위치를 기준으로 uploads 폴더의 절대 경로를 설정
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+client = MongoClient('mongodb://localhost:27017/')
+db = client['dicom_database']
+fs = gridfs.GridFS(db)
+collection = db['dicom_files']
+
 ALLOWED_EXTENSIONS = {'dcm'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# 파일 이름과 환자 정보를 연결해 저장할 딕셔너리
-file_patient_info = {}
 
 
 def allowed_file(filename):
@@ -21,36 +22,79 @@ def allowed_file(filename):
 
 @app.route('/')
 def list_files():
-    """업로드된 파일 목록과 관련된 환자 정보를 보여주는 페이지를 렌더링합니다."""
-    return render_template('upload.html', files=file_patient_info)
+    files = list(collection.find({}, {'_id': 0, 'name': 1, 'patient_id': 1, 'filename': 1}))
+    return render_template('upload.html', files=files)
 
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """파일을 업로드하고 환자 정보를 저장합니다."""
     if 'file' not in request.files:
         return 'No file part', 400
     file = request.files['file']
     if file.filename == '' or not allowed_file(file.filename):
         return 'No selected file', 400
 
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    file.save(file_path)
+    dicom_data = dcmread(file.stream)
+    # Add code to anonymize DICOM data here
 
-    # 환자 정보를 딕셔너리에 저장
-    patient_name = request.form.get('patient_name', 'Unknown')
-    patient_id = request.form.get('patient_id', 'Unknown')
-    file_patient_info[filename] = {'name': patient_name, 'id': patient_id}
+    binary_data = io.BytesIO()
+    dcmwrite(binary_data, dicom_data)
+    binary_data.seek(0)
+
+    fs_id = fs.put(binary_data, filename=secure_filename(file.filename))
+
+    collection.insert_one({
+        'name': request.form.get('patient_name', 'Unknown'),
+        'patient_id': request.form.get('patient_id', 'Unknown'),
+        'filename': secure_filename(file.filename), # 이 줄을 추가
+        'fs_id': fs_id  # Store the file's GridFS ID
+    })
 
     return redirect(url_for('list_files'))
 
 
 @app.route('/download/<filename>')
 def download_file(filename):
-    """업로드된 파일을 다운로드합니다."""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    # Check if the filename is valid
+    if not filename:
+        print("No filename provided for download.")
+        return 'No filename provided', 400
+
+    # Attempt to find the document in the database
+    file_doc = collection.find_one({'filename': filename})
+    if not file_doc:
+        print(f"File {filename} not found in the database.")
+        return 'File not found', 404
+
+    # Attempt to retrieve the file from GridFS
+    try:
+        fs_file = fs.get(file_doc['fs_id'])
+        # Read the DICOM file into a pydicom Dataset
+        dicom_data = dcmread(fs_file)
+
+        # Anonymize the DICOM dataset (remove or replace patient information)
+        tags_to_anonymize = ['PatientName', 'PatientID', 'PatientBirthDate', 'PatientSex',
+                             'PatientAge', 'PatientWeight', 'PatientAddress']
+
+        for tag in tags_to_anonymize:
+            if tag in dicom_data:
+                delattr(dicom_data, tag)
+
+        # Convert the anonymized dataset back to binary
+        anonymized_data = io.BytesIO()
+        dcmwrite(anonymized_data, dicom_data)
+        anonymized_data.seek(0)
+
+        # Send the anonymized DICOM file as a response
+        return send_file(
+            anonymized_data,
+            mimetype='application/dicom',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        print(f"Error retrieving file {filename} from GridFS: {e}")
+        return 'Error downloading file', 500
 
 
 if __name__ == "__main__":

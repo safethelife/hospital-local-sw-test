@@ -1,15 +1,14 @@
-<!-- upload.html 수정 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Uploaded Files</title>
+    <title>Uploaded DICOM Files</title>
 </head>
 <body>
-    <h1>Uploaded Files</h1>
+    <h1>Uploaded DICOM Files</h1>
     <ul>
-        {% for filename, info in files.items() %}
-        <li>Patient Name: {{ info.name }}, Patient ID: {{ info.id }} - <a href="{{ url_for('download_file', filename=filename) }}">Download</a></li>
+        {% for file in files %}
+        <li>Patient Name: {{ file['name'] }}, Patient ID: {{ file['patient_id'] }} - <a href="{{ url_for('download_file', filename=file['filename']) }}">Download</a></li>
         {% endfor %}
     </ul>
 </body>
