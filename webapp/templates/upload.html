@@ -8,7 +8,7 @@
     <h1>Uploaded DICOM Files</h1>
     <ul>
         {% for file in files %}
-        <li>Patient Name: {{ file['name'] }}, Patient ID: {{ file['patient_id'] }} - <a href="{{ url_for('download_file', filename=file['filename']) }}">Download</a></li>
+        <li>Patient Name: {{ file['name'] }}, Patient ID: {{ file['patient_id'] }} - <a href="{{ url_for('show_qr', filename=file['filename']) }}">Download QR</a></li>
         {% endfor %}
     </ul>
 </body>

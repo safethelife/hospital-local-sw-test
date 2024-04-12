@@ -1,8 +1,10 @@
+import base64
+
 from flask import Flask, request, redirect, url_for, render_template, send_file
 from pymongo import MongoClient
 import gridfs
 from pydicom import dcmread, dcmwrite
-import os
+import qrcode
 import io
 from werkzeug.utils import secure_filename
 
@@ -97,5 +99,28 @@ def download_file(filename):
         return 'Error downloading file', 500
 
 
+@app.route('/show_qr/<filename>')
+def show_qr(filename):
+    # 변경된 ngrok URL 사용
+    download_url = f'https://f367-61-81-223-102.ngrok-free.app/download/{filename}'
+
+    # 기존 QR 코드 생성 로직 유지
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(download_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    img_data = base64.b64encode(img_io.getvalue()).decode('utf-8')
+    return render_template('show_qr.html', qr_code_data=img_data)
+
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
